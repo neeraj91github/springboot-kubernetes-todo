@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "todo-app.fullname" . }}-db-init
+  labels:
+    {{- include "todo-app.labels" . | nindent 4 }}
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "todo-app.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: init-db
+          image: mcr.microsoft.com/mssql-tools
+          command:
+            - /bin/bash
+            - -c
+            - |
+              echo "Waiting for MSSQL to be ready..."
+              until /opt/mssql-tools/bin/sqlcmd -S {{ .Values.mssql.serviceName }} -U sa -P "$SA_PASSWORD" -Q "SELECT 1" ; do
+                echo "MSSQL not ready, retrying..."
+                sleep 3
+              done
+
+              echo "Creating database '{{ .Values.mssql.database }}' if not exists..."
+              /opt/mssql-tools/bin/sqlcmd -S {{ .Values.mssql.serviceName }} -U sa -P "$SA_PASSWORD" \
+                -Q "IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '{{ .Values.mssql.database }}')
+                    BEGIN
+                      PRINT 'Database not found. Creating now...';
+                      CREATE DATABASE {{ .Values.mssql.database }};
+                    END
+                    ELSE
+                      PRINT 'Database already exists.';"
+          env:
+            - name: SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Values.secretName }}"
+                  key: "{{ .Values.mssql.passwordKey }}"

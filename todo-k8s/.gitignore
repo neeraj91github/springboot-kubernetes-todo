@@ -1,0 +1,5 @@
+
+todo-secret.yaml
+*.key
+*.crt
+*.pem

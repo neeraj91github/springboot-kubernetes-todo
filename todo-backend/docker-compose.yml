@@ -1,0 +1,40 @@
+services:
+  backend:
+    build: .
+    container_name: todo-backend
+    ports:
+      - "9090:9090"
+    depends_on:
+      mssql:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:sqlserver://mssql:1433;databaseName=todo_app;trustServerCertificate=true
+      DB_USER: SA
+      DB_PASS: ${DB_PASS:?Set DB_PASS in .env}
+      DB_DIALECT: org.hibernate.dialect.SQLServerDialect
+      HIBERNATE_DDL_AUTO: update
+      SERVER_PORT: 9090
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: todo-mssql
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${DB_PASS:?Set DB_PASS in .env}
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U SA -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+volumes:
+  mssql_data:

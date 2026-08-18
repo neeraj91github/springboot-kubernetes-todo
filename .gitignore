@@ -1,0 +1,9 @@
+
+# Local secrets / generated certificates
+todo-secret.yaml
+*.key
+*.crt
+*.pem
+.env
+.env.*
+!.env.example

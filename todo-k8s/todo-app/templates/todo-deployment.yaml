@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-backend
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  selector:
+    matchLabels:
+      app: todo-backend
+  template:
+    metadata:
+      labels:
+        app: todo-backend
+    spec:
+      initContainers:
+        - name: wait-for-mssql
+          image: frr-docker.frrdev.com/busybox
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for MSSQL service {{ .Values.mssql.serviceName }}:1433..."
+              until nc -z {{ .Values.mssql.serviceName }} 1433; do
+                echo "Still waiting..."
+                sleep 2
+              done
+              echo "MSSQL is up!"
+      containers:
+      - name: todo-backend
+        image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+        imagePullPolicy: "{{ .Values.backend.imagePullPolicy }}"
+        ports:
+          - containerPort: {{ .Values.backend.port }}
+        env:
+          - name: "{{ .Values.mssql.urlKey }}"
+            valueFrom:
+              configMapKeyRef:
+                name: "{{ .Values.configName }}"
+                key: "{{ .Values.mssql.urlKey }}"
+          - name: "{{ .Values.mssql.userKey }}"
+            valueFrom:
+              secretKeyRef:
+                name: "{{ .Values.secretName }}"
+                key: "{{ .Values.mssql.userKey }}"
+          - name: SERVER_PORT
+            value: "{{ .Values.backend.port }}"
+          - name: "{{ .Values.mssql.passwordKey }}"
+            valueFrom:
+              secretKeyRef:
+                name: "{{ .Values.secretName }}"
+                key: "{{ .Values.mssql.passwordKey }}"
+          - name: "{{ .Values.security.encryptionKeyName }}"
+            valueFrom:
+              secretKeyRef:
+                name: "{{ .Values.secretName }}"
+                key: "{{ .Values.security.encryptionKeyName }}"
+          - name: "{{ .Values.security.jwtSecretName }}"
+            valueFrom:
+              secretKeyRef:
+                name: "{{ .Values.secretName }}"
+                key: "{{ .Values.security.jwtSecretName }}"

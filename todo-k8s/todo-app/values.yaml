@@ -1,0 +1,41 @@
+secretName: todo-secret
+configName: todo-config
+
+# Secrets are intentionally NOT managed by this chart.
+# Create todo-secret separately with kubectl or a secrets manager.
+
+mssql:
+  image:
+    repository: mcr.microsoft.com/mssql/server
+    tag: 2022-latest
+  port: 1433
+  urlKey: DB_URL
+  userKey: DB_USER
+  passwordKey: DB_PASS
+  storage: 5Gi
+  serviceName: mssql-service
+  database: todo_app
+
+backend:
+  image:
+    repository: todo-backend
+    tag: latest
+  port: 9090
+  nodePort: 30090
+  imagePullPolicy: Never
+  replicas: 2
+
+security:
+  encryptionKeyName: ENCRYPTION_KEY
+  jwtSecretName: JWT_SECRET
+
+ingress:
+  className: nginx
+  enabled: true
+  host: todo.local
+  tlsSecretName: todo-tls-certmanager
+
+cert:
+  enabled: true
+  issuerName: todo-selfsigned
+  commonName: todo.local
